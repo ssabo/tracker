@@ -5,7 +5,7 @@ import { loadData, addSite, deleteSite } from '../utils/storage';
 const LocationManager: React.FC = () => {
   const [sites, setSites] = useState<InfusionSite[]>([]);
   const [newSiteName, setNewSiteName] = useState('');
-  const [selectedSide, setSelectedSide] = useState<'left' | 'right'>('left');
+  const [selectedSide, setSelectedSide] = useState<'left' | 'right' | 'both'>('both');
 
   const loadSites = () => {
     const data = loadData();
@@ -19,8 +19,14 @@ const LocationManager: React.FC = () => {
   const handleAddSite = (e: React.FormEvent) => {
     e.preventDefault();
     if (newSiteName.trim()) {
-      addSite(newSiteName.trim(), selectedSide);
+      if (selectedSide === 'both') {
+        addSite(newSiteName.trim(), 'left');
+        addSite(newSiteName.trim(), 'right');
+      } else {
+        addSite(newSiteName.trim(), selectedSide);
+      }
       setNewSiteName('');
+      setSelectedSide('both'); // Reset to default
       loadSites();
     }
   };
@@ -61,9 +67,10 @@ const LocationManager: React.FC = () => {
           <label style={{ display: 'block', marginBottom: '5px' }}>Side:</label>
           <select
             value={selectedSide}
-            onChange={(e) => setSelectedSide(e.target.value as 'left' | 'right')}
+            onChange={(e) => setSelectedSide(e.target.value as 'left' | 'right' | 'both')}
             style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px', minWidth: '120px' }}
           >
+            <option value="both">Both</option>
             <option value="left">Left</option>
             <option value="right">Right</option>
           </select>
