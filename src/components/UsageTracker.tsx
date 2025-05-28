@@ -30,26 +30,29 @@ const UsageTracker: React.FC = () => {
       priority: 'medium' as 'high' | 'medium' | 'low'
     }));
 
-    // Sort by days since last use (nulls first for never used)
-    const sorted = sitesWithDays.sort((a, b) => {
+    // Sort by days since last use (nulls first for never used) for priority calculation
+    const prioritySorted = sitesWithDays.sort((a, b) => {
       if (a.daysSinceLastUse === null && b.daysSinceLastUse === null) return 0;
       if (a.daysSinceLastUse === null) return -1;
       if (b.daysSinceLastUse === null) return 1;
       return b.daysSinceLastUse - a.daysSinceLastUse;
     });
 
-    // Assign priorities
-    sorted.forEach((site, index) => {
+    // Assign priorities based on usage order
+    prioritySorted.forEach((site, index) => {
       if (site.daysSinceLastUse === null || index < 3) {
         site.priority = 'high'; // Green - best candidates
-      } else if (index >= sorted.length - 3) {
+      } else if (index >= prioritySorted.length - 3) {
         site.priority = 'low'; // Red - worst candidates
       } else {
         site.priority = 'medium'; // Default color
       }
     });
 
-    setSites(sorted);
+    // Sort alphabetically for display
+    const alphabeticalSorted = prioritySorted.sort((a, b) => a.name.localeCompare(b.name));
+
+    setSites(alphabeticalSorted);
   };
 
   const loadLastUsed = () => {
