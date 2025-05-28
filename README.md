@@ -1,4 +1,15 @@
-# Getting Started with Create React App
+# Infusion Site Tracker
+
+A React TypeScript application for diabetes management that helps users track injection site rotation and usage history. This tool assists people with diabetes who need to rotate their insulin injection sites to prevent lipodystrophy and maintain optimal absorption.
+
+## Features
+
+- **Site Management**: Add and organize injection sites by body location (left/right)
+- **Usage Tracking**: Record when each site is used with timestamp tracking
+- **History View**: View complete usage history with edit and delete capabilities
+- **Local Storage**: All data persists locally in your browser
+
+## Getting Started
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
