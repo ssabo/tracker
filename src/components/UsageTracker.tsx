@@ -113,8 +113,8 @@ const UsageTracker: React.FC = () => {
   }, {} as Record<string, { left: SiteWithDays | null; right: SiteWithDays | null }>);
 
   return (
-    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-      <h2>Track Infusion Site Usage</h2>
+    <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
+      <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 20px 0' }}>Track Infusion Site Usage</h2>
       
       {lastUsed && (
         <div style={{ 
@@ -158,15 +158,18 @@ const UsageTracker: React.FC = () => {
                         {sides[side] ? (
                           <label
                             style={{
-                              display: 'block',
-                              padding: '12px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              padding: '16px 12px',
                               border: `2px solid ${getPriorityBorderColor(sides[side]!.priority, selectedSiteId === sides[side]!.id)}`,
-                              borderRadius: '6px',
+                              borderRadius: '8px',
                               cursor: 'pointer',
                               textAlign: 'center',
                               backgroundColor: getPriorityColor(sides[side]!.priority, selectedSiteId === sides[side]!.id),
                               color: selectedSiteId === sides[side]!.id ? 'white' : '#333',
-                              transition: 'all 0.2s'
+                              transition: 'all 0.2s',
+                              minHeight: '60px'
                             }}
                           >
                             <input
@@ -215,13 +218,14 @@ const UsageTracker: React.FC = () => {
             style={{
               backgroundColor: selectedSiteId ? '#28a745' : '#6c757d',
               color: 'white',
-              padding: '12px 24px',
+              padding: '16px 24px',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: selectedSiteId ? 'pointer' : 'not-allowed',
-              fontSize: '16px',
+              fontSize: '18px',
               fontWeight: 'bold',
-              width: '100%'
+              width: '100%',
+              minHeight: '52px'
             }}
           >
             Record Usage Now

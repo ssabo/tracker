@@ -41,8 +41,8 @@ const LocationManager: React.FC = () => {
   }, {} as Record<string, { left: InfusionSite | null; right: InfusionSite | null }>);
 
   return (
-    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-      <h2>Manage Infusion Sites</h2>
+    <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
+      <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 20px 0' }}>Manage Infusion Sites</h2>
       
       <form onSubmit={handleAddSite} style={{ marginBottom: '30px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
         <h3>Add New Site</h3>
@@ -53,7 +53,7 @@ const LocationManager: React.FC = () => {
             value={newSiteName}
             onChange={(e) => setNewSiteName(e.target.value)}
             placeholder="e.g., Abdomen, Arm, Thigh"
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+            style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px', boxSizing: 'border-box' }}
             required
           />
         </div>
@@ -62,7 +62,7 @@ const LocationManager: React.FC = () => {
           <select
             value={selectedSide}
             onChange={(e) => setSelectedSide(e.target.value as 'left' | 'right')}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px', minWidth: '120px' }}
           >
             <option value="left">Left</option>
             <option value="right">Right</option>
@@ -73,10 +73,13 @@ const LocationManager: React.FC = () => {
           style={{
             backgroundColor: '#007bff',
             color: 'white',
-            padding: '10px 20px',
+            padding: '14px 24px',
             border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            minHeight: '48px'
           }}
         >
           Add Site
@@ -114,10 +117,11 @@ const LocationManager: React.FC = () => {
                             backgroundColor: '#dc3545',
                             color: 'white',
                             border: 'none',
-                            padding: '5px 10px',
-                            borderRadius: '3px',
+                            padding: '8px 12px',
+                            borderRadius: '4px',
                             cursor: 'pointer',
-                            fontSize: '12px'
+                            fontSize: '14px',
+                            minHeight: '36px'
                           }}
                         >
                           Delete

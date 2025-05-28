@@ -119,8 +119,8 @@ const UsageHistory: React.FC = () => {
   });
 
   return (
-    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-      <h2>Usage History</h2>
+    <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
+      <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 20px 0' }}>Usage History</h2>
       
       {history.length === 0 ? (
         <div style={{ 
