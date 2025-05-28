@@ -2,14 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { InfusionSite } from '../types';
 import { loadData, recordUsage, getUsageHistory } from '../utils/storage';
 
+interface SiteWithDays extends InfusionSite {
+  daysSinceLastUse: number | null;
+  priority: 'high' | 'medium' | 'low';
+}
+
 const UsageTracker: React.FC = () => {
-  const [sites, setSites] = useState<InfusionSite[]>([]);
+  const [sites, setSites] = useState<SiteWithDays[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState('');
   const [lastUsed, setLastUsed] = useState<string>('');
 
+  const calculateDaysSinceLastUse = (siteId: string): number | null => {
+    const history = getUsageHistory();
+    const siteUsage = history.filter(record => record.siteId === siteId);
+    if (siteUsage.length === 0) return null;
+    
+    const lastUseTimestamp = Math.max(...siteUsage.map(record => record.timestamp));
+    const daysDiff = Math.floor((Date.now() - lastUseTimestamp) / (1000 * 60 * 60 * 24));
+    return daysDiff;
+  };
+
   const loadSites = () => {
     const data = loadData();
-    setSites(data.sites);
+    const sitesWithDays = data.sites.map(site => ({
+      ...site,
+      daysSinceLastUse: calculateDaysSinceLastUse(site.id),
+      priority: 'medium' as 'high' | 'medium' | 'low'
+    }));
+
+    // Sort by days since last use (nulls first for never used)
+    const sorted = sitesWithDays.sort((a, b) => {
+      if (a.daysSinceLastUse === null && b.daysSinceLastUse === null) return 0;
+      if (a.daysSinceLastUse === null) return -1;
+      if (b.daysSinceLastUse === null) return 1;
+      return b.daysSinceLastUse - a.daysSinceLastUse;
+    });
+
+    // Assign priorities
+    sorted.forEach((site, index) => {
+      if (site.daysSinceLastUse === null || index < 3) {
+        site.priority = 'high'; // Green - best candidates
+      } else if (index >= sorted.length - 3) {
+        site.priority = 'low'; // Red - worst candidates
+      } else {
+        site.priority = 'medium'; // Default color
+      }
+    });
+
+    setSites(sorted);
   };
 
   const loadLastUsed = () => {
@@ -38,8 +78,29 @@ const UsageTracker: React.FC = () => {
     if (selectedSiteId) {
       recordUsage(selectedSiteId);
       setSelectedSiteId('');
+      loadSites(); // Reload to update days and priorities
       loadLastUsed();
       alert('Usage recorded successfully!');
+    }
+  };
+
+  const getPriorityColor = (priority: 'high' | 'medium' | 'low', isSelected: boolean) => {
+    if (isSelected) return '#007bff';
+    
+    switch (priority) {
+      case 'high': return '#d4edda'; // Light green
+      case 'low': return '#f8d7da'; // Light red
+      default: return '#f8f9fa'; // Default gray
+    }
+  };
+
+  const getPriorityBorderColor = (priority: 'high' | 'medium' | 'low', isSelected: boolean) => {
+    if (isSelected) return '#007bff';
+    
+    switch (priority) {
+      case 'high': return '#28a745'; // Green
+      case 'low': return '#dc3545'; // Red
+      default: return '#ddd'; // Default gray
     }
   };
 
@@ -49,7 +110,7 @@ const UsageTracker: React.FC = () => {
     }
     acc[site.name][site.side] = site;
     return acc;
-  }, {} as Record<string, { left: InfusionSite | null; right: InfusionSite | null }>);
+  }, {} as Record<string, { left: SiteWithDays | null; right: SiteWithDays | null }>);
 
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
@@ -99,11 +160,11 @@ const UsageTracker: React.FC = () => {
                             style={{
                               display: 'block',
                               padding: '12px',
-                              border: '2px solid #ddd',
+                              border: `2px solid ${getPriorityBorderColor(sides[side]!.priority, selectedSiteId === sides[side]!.id)}`,
                               borderRadius: '6px',
                               cursor: 'pointer',
                               textAlign: 'center',
-                              backgroundColor: selectedSiteId === sides[side]!.id ? '#007bff' : '#f8f9fa',
+                              backgroundColor: getPriorityColor(sides[side]!.priority, selectedSiteId === sides[side]!.id),
                               color: selectedSiteId === sides[side]!.id ? 'white' : '#333',
                               transition: 'all 0.2s'
                             }}
@@ -118,6 +179,11 @@ const UsageTracker: React.FC = () => {
                             />
                             <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
                               {side}
+                            </div>
+                            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                              {sides[side]!.daysSinceLastUse === null 
+                                ? 'Never used' 
+                                : `${sides[side]!.daysSinceLastUse} days ago`}
                             </div>
                           </label>
                         ) : (
