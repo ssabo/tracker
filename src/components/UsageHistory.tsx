@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getUsageHistory, deleteUsageRecord, updateUsageRecord, loadData } from '../utils/storage';
+import React, { useState, useEffect, useRef } from 'react';
+import { getUsageHistory, deleteUsageRecord, updateUsageRecord, loadData, saveData } from '../utils/storage';
 import { InfusionSite } from '../types';
 
 interface HistoryRecord {
@@ -17,6 +17,7 @@ const UsageHistory: React.FC = () => {
   const [editSiteId, setEditSiteId] = useState('');
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadHistory = () => {
     const historyData = getUsageHistory();
@@ -111,6 +112,48 @@ const UsageHistory: React.FC = () => {
     }
   };
 
+  const handleExport = () => {
+    const data = loadData();
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `infusion-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const jsonData = JSON.parse(e.target?.result as string);
+          if (window.confirm('This will replace all current data. Are you sure you want to continue?')) {
+            saveData(jsonData);
+            loadHistory();
+            loadSites();
+            alert('Data imported successfully!');
+          }
+        } catch (error) {
+          alert('Error importing data. Please check that the file is a valid JSON backup.');
+        }
+      };
+      reader.readAsText(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const groupedHistory = groupByDate(history);
   const dateKeys = Object.keys(groupedHistory).sort((a, b) => {
     const dateA = new Date(a).getTime();
@@ -121,6 +164,52 @@ const UsageHistory: React.FC = () => {
   return (
     <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
       <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 20px 0' }}>Usage History</h2>
+      
+      <div style={{ 
+        display: 'flex', 
+        gap: '10px', 
+        marginBottom: '20px',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={handleExport}
+          style={{
+            backgroundColor: '#28a745',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+        >
+          Export Data
+        </button>
+        <button
+          onClick={handleImportClick}
+          style={{
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+        >
+          Import Data
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImport}
+          style={{ display: 'none' }}
+        />
+      </div>
       
       {history.length === 0 ? (
         <div style={{ 
