@@ -151,9 +151,9 @@ const UsageTracker: React.FC = () => {
         <form onSubmit={handleRecordUsage}>
           <div style={{ marginBottom: '20px' }}>
             <h3>Select Current Infusion Site:</h3>
-            <div style={{ display: 'grid', gap: '15px' }}>
+            <div style={{ display: 'grid', gap: '8px' }}>
               {Object.entries(groupedSites).map(([siteName, sides]) => (
-                <div key={siteName} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px' }}>
+                <div key={siteName} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '10px' }}>
                   <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>{siteName}</h4>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     {(['left', 'right'] as const).map(side => (
@@ -164,7 +164,7 @@ const UsageTracker: React.FC = () => {
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'center',
-                              padding: '16px 12px',
+                              padding: '10px 8px',
                               border: `2px solid ${getPriorityBorderColor(sides[side]!.priority, selectedSiteId === sides[side]!.id)}`,
                               borderRadius: '8px',
                               cursor: 'pointer',
@@ -172,7 +172,7 @@ const UsageTracker: React.FC = () => {
                               backgroundColor: getPriorityColor(sides[side]!.priority, selectedSiteId === sides[side]!.id),
                               color: selectedSiteId === sides[side]!.id ? 'white' : '#333',
                               transition: 'all 0.2s',
-                              minHeight: '60px'
+                              minHeight: '45px'
                             }}
                           >
                             <input

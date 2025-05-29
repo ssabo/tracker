@@ -28,7 +28,7 @@ export const saveData = (data: AppData): void => {
 export const addSite = (name: string, side: 'left' | 'right'): void => {
   const data = loadData();
   const newSite: InfusionSite = {
-    id: Date.now().toString(),
+    id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     name,
     side
   };
@@ -46,7 +46,7 @@ export const deleteSite = (siteId: string): void => {
 export const recordUsage = (siteId: string): void => {
   const data = loadData();
   const newRecord: UsageRecord = {
-    id: Date.now().toString(),
+    id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     siteId,
     timestamp: Date.now()
   };
