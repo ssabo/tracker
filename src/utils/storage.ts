@@ -25,14 +25,16 @@ export const saveData = (data: AppData): void => {
   }
 };
 
-export const addSite = (name: string, side: 'left' | 'right'): void => {
+export const addSite = (name: string, side: 'left' | 'right' | 'both'): void => {
   const data = loadData();
-  const newSite: InfusionSite = {
-    id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-    name,
-    side
-  };
-  data.sites.push(newSite);
+  const sides: ('left' | 'right')[] = side === 'both' ? ['left', 'right'] : [side];
+  for (const s of sides) {
+    data.sites.push({
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      name,
+      side: s
+    });
+  }
   saveData(data);
 };
 
@@ -85,4 +87,16 @@ export const updateUsageRecord = (recordId: string, newSiteId: string, newTimest
     };
     saveData(data);
   }
+};
+
+export const groupSitesByName = <T extends InfusionSite>(
+  sites: T[]
+): Record<string, { left: T | null; right: T | null }> => {
+  return sites.reduce((acc, site) => {
+    if (!acc[site.name]) {
+      acc[site.name] = { left: null, right: null };
+    }
+    acc[site.name][site.side] = site;
+    return acc;
+  }, {} as Record<string, { left: T | null; right: T | null }>);
 };

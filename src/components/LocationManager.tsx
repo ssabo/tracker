@@ -1,30 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { InfusionSite } from '../types';
-import { loadData, addSite, deleteSite } from '../utils/storage';
+import { loadData, addSite, deleteSite, groupSitesByName } from '../utils/storage';
 
 const LocationManager: React.FC = () => {
   const [sites, setSites] = useState<InfusionSite[]>([]);
   const [newSiteName, setNewSiteName] = useState('');
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | 'both'>('both');
 
-  const loadSites = () => {
+  const loadSites = useCallback(() => {
     const data = loadData();
     setSites(data.sites);
-  };
+  }, []);
 
   useEffect(() => {
     loadSites();
-  }, []);
+  }, [loadSites]);
 
   const handleAddSite = (e: React.FormEvent) => {
     e.preventDefault();
     if (newSiteName.trim()) {
-      if (selectedSide === 'both') {
-        addSite(newSiteName.trim(), 'left');
-        addSite(newSiteName.trim(), 'right');
-      } else {
-        addSite(newSiteName.trim(), selectedSide);
-      }
+      addSite(newSiteName.trim(), selectedSide);
       setNewSiteName('');
       setSelectedSide('both'); // Reset to default
       loadSites();
@@ -38,13 +33,7 @@ const LocationManager: React.FC = () => {
     }
   };
 
-  const groupedSites = sites.reduce((acc, site) => {
-    if (!acc[site.name]) {
-      acc[site.name] = { left: null, right: null };
-    }
-    acc[site.name][site.side] = site;
-    return acc;
-  }, {} as Record<string, { left: InfusionSite | null; right: InfusionSite | null }>);
+  const groupedSites = groupSitesByName(sites);
 
   return (
     <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
