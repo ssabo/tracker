@@ -89,6 +89,42 @@ export const updateUsageRecord = (recordId: string, newSiteId: string, newTimest
   }
 };
 
+export const isSiteSuspended = (site: InfusionSite): boolean => {
+  if (!site.suspension) return false;
+  if (site.suspension.resumeAt === null) return true;
+  if (site.suspension.resumeAt > Date.now()) return true;
+  // Suspension has expired — auto-clear it
+  const data = loadData();
+  const stored = data.sites.find(s => s.id === site.id);
+  if (stored) {
+    delete stored.suspension;
+    saveData(data);
+  }
+  return false;
+};
+
+export const suspendSite = (siteId: string, durationMs: number | null): void => {
+  const data = loadData();
+  const site = data.sites.find(s => s.id === siteId);
+  if (site) {
+    const now = Date.now();
+    site.suspension = {
+      suspendedAt: now,
+      resumeAt: durationMs !== null ? now + durationMs : null,
+    };
+    saveData(data);
+  }
+};
+
+export const unsuspendSite = (siteId: string): void => {
+  const data = loadData();
+  const site = data.sites.find(s => s.id === siteId);
+  if (site) {
+    delete site.suspension;
+    saveData(data);
+  }
+};
+
 export const groupSitesByName = <T extends InfusionSite>(
   sites: T[]
 ): Record<string, { left: T | null; right: T | null }> => {
