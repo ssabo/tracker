@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { InfusionSite } from '../types';
-import { loadData, recordUsage, getUsageHistory } from '../utils/storage';
+import { loadData, recordUsage, getUsageHistory, groupSitesByName } from '../utils/storage';
 
 interface SiteWithDays extends InfusionSite {
   daysSinceLastUse: number | null;
@@ -12,23 +12,29 @@ const UsageTracker: React.FC = () => {
   const [selectedSiteId, setSelectedSiteId] = useState('');
   const [lastUsed, setLastUsed] = useState<string>('');
 
-  const calculateDaysSinceLastUse = (siteId: string): number | null => {
-    const history = getUsageHistory();
-    const siteUsage = history.filter(record => record.siteId === siteId);
-    if (siteUsage.length === 0) return null;
-    
-    const lastUseTimestamp = Math.max(...siteUsage.map(record => record.timestamp));
-    const daysDiff = Math.floor((Date.now() - lastUseTimestamp) / (1000 * 60 * 60 * 24));
-    return daysDiff;
-  };
-
-  const loadSites = () => {
+  const loadSites = useCallback(() => {
     const data = loadData();
-    const sitesWithDays = data.sites.map(site => ({
-      ...site,
-      daysSinceLastUse: calculateDaysSinceLastUse(site.id),
-      priority: 'medium' as 'high' | 'medium' | 'low'
-    }));
+
+    // Build a map of siteId -> most recent timestamp (single pass)
+    const lastUseMap = new Map<string, number>();
+    for (const record of data.usageHistory) {
+      const prev = lastUseMap.get(record.siteId);
+      if (prev === undefined || record.timestamp > prev) {
+        lastUseMap.set(record.siteId, record.timestamp);
+      }
+    }
+
+    const now = Date.now();
+    const sitesWithDays = data.sites.map(site => {
+      const lastUse = lastUseMap.get(site.id);
+      return {
+        ...site,
+        daysSinceLastUse: lastUse !== undefined
+          ? Math.floor((now - lastUse) / (1000 * 60 * 60 * 24))
+          : null,
+        priority: 'medium' as 'high' | 'medium' | 'low'
+      };
+    });
 
     // Sort by days since last use (nulls first for never used) for priority calculation
     const prioritySorted = sitesWithDays.sort((a, b) => {
@@ -53,28 +59,20 @@ const UsageTracker: React.FC = () => {
     const alphabeticalSorted = prioritySorted.sort((a, b) => a.name.localeCompare(b.name));
 
     setSites(alphabeticalSorted);
-  };
+  }, []);
 
-  const loadLastUsed = () => {
+  const loadLastUsed = useCallback(() => {
     const history = getUsageHistory();
     if (history.length > 0) {
       const lastRecord = history[0];
-      const site = sites.find(s => s.id === lastRecord.siteId);
-      if (site) {
-        setLastUsed(`${site.name} (${site.side}) - ${new Date(lastRecord.timestamp).toLocaleDateString()} at ${new Date(lastRecord.timestamp).toLocaleTimeString()}`);
-      }
+      setLastUsed(`${lastRecord.siteName} (${lastRecord.siteSide}) - ${new Date(lastRecord.timestamp).toLocaleDateString()} at ${new Date(lastRecord.timestamp).toLocaleTimeString()}`);
     }
-  };
-
-  useEffect(() => {
-    loadSites();
   }, []);
 
   useEffect(() => {
-    if (sites.length > 0) {
-      loadLastUsed();
-    }
-  }, [sites]);
+    loadSites();
+    loadLastUsed();
+  }, [loadSites, loadLastUsed]);
 
   const handleRecordUsage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,13 +105,7 @@ const UsageTracker: React.FC = () => {
     }
   };
 
-  const groupedSites = sites.reduce((acc, site) => {
-    if (!acc[site.name]) {
-      acc[site.name] = { left: null, right: null };
-    }
-    acc[site.name][site.side] = site;
-    return acc;
-  }, {} as Record<string, { left: SiteWithDays | null; right: SiteWithDays | null }>);
+  const groupedSites = groupSitesByName(sites);
 
   return (
     <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
@@ -187,9 +179,13 @@ const UsageTracker: React.FC = () => {
                               {side}
                             </div>
                             <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                              {sides[side]!.daysSinceLastUse === null 
-                                ? 'Never used' 
-                                : `${sides[side]!.daysSinceLastUse} days ago`}
+                              {sides[side]!.daysSinceLastUse === null
+                                ? 'Never used'
+                                : sides[side]!.daysSinceLastUse === 0
+                                  ? 'Today'
+                                  : sides[side]!.daysSinceLastUse === 1
+                                    ? 'Yesterday'
+                                    : `${sides[side]!.daysSinceLastUse} days ago`}
                             </div>
                           </label>
                         ) : (

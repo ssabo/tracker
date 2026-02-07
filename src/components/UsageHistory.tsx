@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getUsageHistory, deleteUsageRecord, updateUsageRecord, loadData, saveData } from '../utils/storage';
-import { InfusionSite } from '../types';
+import { InfusionSite, AppData } from '../types';
 
 interface HistoryRecord {
   id: string;
@@ -64,11 +64,19 @@ const UsageHistory: React.FC = () => {
     }
   };
 
+  const toDateKey = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const groupByDate = (records: HistoryRecord[]) => {
     const groups: { [key: string]: HistoryRecord[] } = {};
-    
+
     records.forEach(record => {
-      const dateKey = formatDate(record.timestamp);
+      const dateKey = toDateKey(record.timestamp);
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -130,6 +138,23 @@ const UsageHistory: React.FC = () => {
     fileInputRef.current?.click();
   };
 
+  const isValidAppData = (data: unknown): data is AppData => {
+    if (typeof data !== 'object' || data === null) return false;
+    const obj = data as Record<string, unknown>;
+    if (!Array.isArray(obj.sites) || !Array.isArray(obj.usageHistory)) return false;
+    return obj.sites.every(s =>
+      typeof s === 'object' && s !== null &&
+      typeof (s as Record<string, unknown>).id === 'string' &&
+      typeof (s as Record<string, unknown>).name === 'string' &&
+      ((s as Record<string, unknown>).side === 'left' || (s as Record<string, unknown>).side === 'right')
+    ) && obj.usageHistory.every(r =>
+      typeof r === 'object' && r !== null &&
+      typeof (r as Record<string, unknown>).id === 'string' &&
+      typeof (r as Record<string, unknown>).siteId === 'string' &&
+      typeof (r as Record<string, unknown>).timestamp === 'number'
+    );
+  };
+
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -137,6 +162,10 @@ const UsageHistory: React.FC = () => {
       reader.onload = (e) => {
         try {
           const jsonData = JSON.parse(e.target?.result as string);
+          if (!isValidAppData(jsonData)) {
+            alert('Invalid backup file. The file does not match the expected data format.');
+            return;
+          }
           if (window.confirm('This will replace all current data. Are you sure you want to continue?')) {
             saveData(jsonData);
             loadHistory();
@@ -155,11 +184,7 @@ const UsageHistory: React.FC = () => {
   };
 
   const groupedHistory = groupByDate(history);
-  const dateKeys = Object.keys(groupedHistory).sort((a, b) => {
-    const dateA = new Date(a).getTime();
-    const dateB = new Date(b).getTime();
-    return dateB - dateA;
-  });
+  const dateKeys = Object.keys(groupedHistory).sort((a, b) => b.localeCompare(a));
 
   return (
     <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
@@ -250,7 +275,7 @@ const UsageHistory: React.FC = () => {
                   fontWeight: 'bold',
                   color: '#495057'
                 }}>
-                  {dateKey}
+                  {formatDate(groupedHistory[dateKey][0].timestamp)}
                 </div>
                 <div style={{ padding: '0' }}>
                   {groupedHistory[dateKey].map((record, index) => (
