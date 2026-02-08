@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { InfusionSite } from '../types';
-import { loadData, recordUsage, getUsageHistory, groupSitesByName } from '../utils/storage';
+import { loadData, recordUsage, getUsageHistory, groupSitesByName, isSiteSuspended } from '../utils/storage';
 
 interface SiteWithDays extends InfusionSite {
   daysSinceLastUse: number | null;
-  priority: 'high' | 'medium' | 'low';
+  priority: 'high' | 'medium' | 'low' | 'suspended';
 }
 
 const UsageTracker: React.FC = () => {
@@ -25,19 +25,22 @@ const UsageTracker: React.FC = () => {
     }
 
     const now = Date.now();
-    const sitesWithDays = data.sites.map(site => {
+    const sitesWithDays: SiteWithDays[] = data.sites.map(site => {
       const lastUse = lastUseMap.get(site.id);
       return {
         ...site,
         daysSinceLastUse: lastUse !== undefined
           ? Math.floor((now - lastUse) / (1000 * 60 * 60 * 24))
           : null,
-        priority: 'medium' as 'high' | 'medium' | 'low'
+        priority: isSiteSuspended(site) ? 'suspended' : 'medium' as SiteWithDays['priority']
       };
     });
 
+    // Only non-suspended sites participate in priority ranking
+    const activeSites = sitesWithDays.filter(s => s.priority !== 'suspended');
+
     // Sort by days since last use (nulls first for never used) for priority calculation
-    const prioritySorted = sitesWithDays.sort((a, b) => {
+    const prioritySorted = activeSites.sort((a, b) => {
       if (a.daysSinceLastUse === null && b.daysSinceLastUse === null) return 0;
       if (a.daysSinceLastUse === null) return -1;
       if (b.daysSinceLastUse === null) return 1;
@@ -56,7 +59,7 @@ const UsageTracker: React.FC = () => {
     });
 
     // Sort alphabetically for display
-    const alphabeticalSorted = prioritySorted.sort((a, b) => a.name.localeCompare(b.name));
+    const alphabeticalSorted = sitesWithDays.sort((a, b) => a.name.localeCompare(b.name));
 
     setSites(alphabeticalSorted);
   }, []);
@@ -85,24 +88,33 @@ const UsageTracker: React.FC = () => {
     }
   };
 
-  const getPriorityColor = (priority: 'high' | 'medium' | 'low', isSelected: boolean) => {
+  const getPriorityColor = (priority: SiteWithDays['priority'], isSelected: boolean) => {
     if (isSelected) return '#007bff';
-    
+
     switch (priority) {
       case 'high': return '#d4edda'; // Light green
       case 'low': return '#f8d7da'; // Light red
+      case 'suspended': return '#d1ecf1'; // Light blue/ice
       default: return '#f8f9fa'; // Default gray
     }
   };
 
-  const getPriorityBorderColor = (priority: 'high' | 'medium' | 'low', isSelected: boolean) => {
+  const getPriorityBorderColor = (priority: SiteWithDays['priority'], isSelected: boolean) => {
     if (isSelected) return '#007bff';
-    
+
     switch (priority) {
       case 'high': return '#28a745'; // Green
       case 'low': return '#dc3545'; // Red
+      case 'suspended': return '#bee5eb'; // Ice blue
       default: return '#ddd'; // Default gray
     }
+  };
+
+  const formatSuspensionLabel = (site: SiteWithDays): string => {
+    if (!site.suspension) return '';
+    if (site.suspension.resumeAt === null) return 'Suspended indefinitely';
+    const resumeDate = new Date(site.suspension.resumeAt);
+    return `Suspended until ${resumeDate.toLocaleDateString()}`;
   };
 
   const groupedSites = groupSitesByName(sites);
@@ -110,14 +122,14 @@ const UsageTracker: React.FC = () => {
   return (
     <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
       <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 20px 0' }}>Track Infusion Site Usage</h2>
-      
+
       {lastUsed && (
-        <div style={{ 
-          backgroundColor: '#e7f3ff', 
-          border: '1px solid #b3d9ff', 
-          borderRadius: '8px', 
-          padding: '15px', 
-          marginBottom: '20px' 
+        <div style={{
+          backgroundColor: '#e7f3ff',
+          border: '1px solid #b3d9ff',
+          borderRadius: '8px',
+          padding: '15px',
+          marginBottom: '20px'
         }}>
           <h4 style={{ margin: '0 0 5px 0', color: '#0066cc' }}>Last Used Site:</h4>
           <p style={{ margin: 0, color: '#0066cc' }}>{lastUsed}</p>
@@ -125,10 +137,10 @@ const UsageTracker: React.FC = () => {
       )}
 
       {sites.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '40px', 
-          backgroundColor: '#f8f9fa', 
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          backgroundColor: '#f8f9fa',
           borderRadius: '8px',
           border: '1px solid #dee2e6'
         }}>
@@ -151,43 +163,69 @@ const UsageTracker: React.FC = () => {
                     {(['left', 'right'] as const).map(side => (
                       <div key={side} style={{ flex: 1 }}>
                         {sides[side] ? (
-                          <label
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              padding: '10px 8px',
-                              border: `2px solid ${getPriorityBorderColor(sides[side]!.priority, selectedSiteId === sides[side]!.id)}`,
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              textAlign: 'center',
-                              backgroundColor: getPriorityColor(sides[side]!.priority, selectedSiteId === sides[side]!.id),
-                              color: selectedSiteId === sides[side]!.id ? 'white' : '#333',
-                              transition: 'all 0.2s',
-                              minHeight: '45px'
-                            }}
-                          >
-                            <input
-                              type="radio"
-                              name="siteId"
-                              value={sides[side]!.id}
-                              checked={selectedSiteId === sides[side]!.id}
-                              onChange={(e) => setSelectedSiteId(e.target.value)}
-                              style={{ display: 'none' }}
-                            />
-                            <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
-                              {side}
+                          sides[side]!.priority === 'suspended' ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                padding: '10px 8px',
+                                border: `2px solid ${getPriorityBorderColor('suspended', false)}`,
+                                borderRadius: '8px',
+                                cursor: 'not-allowed',
+                                textAlign: 'center',
+                                backgroundColor: getPriorityColor('suspended', false),
+                                color: '#6c757d',
+                                minHeight: '45px',
+                                opacity: 0.7,
+                              }}
+                            >
+                              <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
+                                {side}
+                              </div>
+                              <div style={{ fontSize: '11px', marginTop: '4px', fontStyle: 'italic' }}>
+                                {formatSuspensionLabel(sides[side]!)}
+                              </div>
                             </div>
-                            <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                              {sides[side]!.daysSinceLastUse === null
-                                ? 'Never used'
-                                : sides[side]!.daysSinceLastUse === 0
-                                  ? 'Today'
-                                  : sides[side]!.daysSinceLastUse === 1
-                                    ? 'Yesterday'
-                                    : `${sides[side]!.daysSinceLastUse} days ago`}
-                            </div>
-                          </label>
+                          ) : (
+                            <label
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                padding: '10px 8px',
+                                border: `2px solid ${getPriorityBorderColor(sides[side]!.priority, selectedSiteId === sides[side]!.id)}`,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                backgroundColor: getPriorityColor(sides[side]!.priority, selectedSiteId === sides[side]!.id),
+                                color: selectedSiteId === sides[side]!.id ? 'white' : '#333',
+                                transition: 'all 0.2s',
+                                minHeight: '45px'
+                              }}
+                            >
+                              <input
+                                type="radio"
+                                name="siteId"
+                                value={sides[side]!.id}
+                                checked={selectedSiteId === sides[side]!.id}
+                                onChange={(e) => setSelectedSiteId(e.target.value)}
+                                style={{ display: 'none' }}
+                              />
+                              <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
+                                {side}
+                              </div>
+                              <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                                {sides[side]!.daysSinceLastUse === null
+                                  ? 'Never used'
+                                  : sides[side]!.daysSinceLastUse === 0
+                                    ? 'Today'
+                                    : sides[side]!.daysSinceLastUse === 1
+                                      ? 'Yesterday'
+                                      : `${sides[side]!.daysSinceLastUse} days ago`}
+                              </div>
+                            </label>
+                          )
                         ) : (
                           <div
                             style={{
