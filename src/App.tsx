@@ -58,8 +58,9 @@ function App() {
         marginBottom: '0'
       }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '0 10px' }}>
-          <h1 style={{ margin: '0 0 20px 0', color: '#333', fontSize: 'clamp(20px, 5vw, 28px)' }}>
-            🩺 Infusion Site Tracker
+          <h1 style={{ margin: '0 0 20px 0', color: '#333', fontSize: 'clamp(20px, 5vw, 28px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <img src="/logo.svg" alt="Infusion Site Tracker Logo" style={{ width: '32px', height: '32px' }} />
+            Infusion Site Tracker
           </h1>
           <nav style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '5px' }}>
             <button
