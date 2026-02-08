@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import UsageHistory from './UsageHistory';
 import { saveData, loadData } from '../utils/storage';
 import { AppData } from '../types';
@@ -338,7 +338,7 @@ describe('UsageHistory - import', () => {
     return new File([content], 'backup.json', { type: 'application/json' });
   }
 
-  it('imports valid data and replaces current data', () => {
+  it('imports valid data and replaces current data', async () => {
     seedData({ sites: [], usageHistory: [] });
     jest.spyOn(window, 'confirm').mockReturnValue(true);
     jest.spyOn(window, 'alert').mockImplementation(() => {});
@@ -355,20 +355,15 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    // FileReader is async, but jsdom fires it synchronously in tests
-    // Verify import happened
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        const data = loadData();
-        expect(data.sites).toHaveLength(1);
-        expect(data.sites[0].name).toBe('Imported Site');
-        expect(window.alert).toHaveBeenCalledWith('Data imported successfully!');
-        resolve();
-      }, 100);
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Data imported successfully!');
     });
+    const data = loadData();
+    expect(data.sites).toHaveLength(1);
+    expect(data.sites[0].name).toBe('Imported Site');
   });
 
-  it('shows error alert for invalid JSON', () => {
+  it('shows error alert for invalid JSON', async () => {
     seedData({ sites: [], usageHistory: [] });
     jest.spyOn(window, 'alert').mockImplementation(() => {});
 
@@ -379,17 +374,14 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(window.alert).toHaveBeenCalledWith(
-          'Error importing data. Please check that the file is a valid JSON backup.'
-        );
-        resolve();
-      }, 100);
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(
+        'Error importing data. Please check that the file is a valid JSON backup.'
+      );
     });
   });
 
-  it('shows error alert for valid JSON with wrong schema', () => {
+  it('shows error alert for valid JSON with wrong schema', async () => {
     seedData({ sites: [], usageHistory: [] });
     jest.spyOn(window, 'alert').mockImplementation(() => {});
 
@@ -401,17 +393,14 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(window.alert).toHaveBeenCalledWith(
-          'Invalid backup file. The file does not match the expected data format.'
-        );
-        resolve();
-      }, 100);
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(
+        'Invalid backup file. The file does not match the expected data format.'
+      );
     });
   });
 
-  it('does not import when user cancels confirmation', () => {
+  it('does not import when user cancels confirmation', async () => {
     const now = Date.now();
     seedData(makeSiteAndRecord('s1', 'Arm', 'left', 'r1', now));
     jest.spyOn(window, 'confirm').mockReturnValue(false);
@@ -429,17 +418,15 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        // Original data should still be there
-        const data = loadData();
-        expect(data.sites[0].name).toBe('Arm');
-        resolve();
-      }, 100);
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalled();
     });
+    // Original data should still be there
+    const data = loadData();
+    expect(data.sites[0].name).toBe('Arm');
   });
 
-  it('rejects data with invalid site structure', () => {
+  it('rejects data with invalid site structure', async () => {
     seedData({ sites: [], usageHistory: [] });
     jest.spyOn(window, 'alert').mockImplementation(() => {});
 
@@ -455,17 +442,14 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(window.alert).toHaveBeenCalledWith(
-          'Invalid backup file. The file does not match the expected data format.'
-        );
-        resolve();
-      }, 100);
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(
+        'Invalid backup file. The file does not match the expected data format.'
+      );
     });
   });
 
-  it('rejects data with invalid usage record structure', () => {
+  it('rejects data with invalid usage record structure', async () => {
     seedData({ sites: [], usageHistory: [] });
     jest.spyOn(window, 'alert').mockImplementation(() => {});
 
@@ -480,13 +464,10 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(window.alert).toHaveBeenCalledWith(
-          'Invalid backup file. The file does not match the expected data format.'
-        );
-        resolve();
-      }, 100);
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(
+        'Invalid backup file. The file does not match the expected data format.'
+      );
     });
   });
 });
