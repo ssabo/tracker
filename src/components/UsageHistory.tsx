@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getUsageHistory, deleteUsageRecord, updateUsageRecord, loadData, saveData } from '../utils/storage';
 import { InfusionSite, AppData } from '../types';
+import { colors, shadows, transitions } from '../utils/theme';
+import Modal from './Modal';
 
 interface HistoryRecord {
   id: string;
@@ -18,6 +20,25 @@ const UsageHistory: React.FC = () => {
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Modal states
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; recordId: string | null }>({
+    isOpen: false,
+    recordId: null,
+  });
+  const [importConfirm, setImportConfirm] = useState<{ isOpen: boolean; data: AppData | null }>({
+    isOpen: false,
+    data: null,
+  });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
+
+  // Button hover states
+  const [exportHover, setExportHover] = useState(false);
+  const [importHover, setImportHover] = useState(false);
 
   const loadHistory = () => {
     const historyData = getUsageHistory();
@@ -87,9 +108,26 @@ const UsageHistory: React.FC = () => {
   };
 
   const handleDeleteRecord = (recordId: string) => {
-    if (window.confirm('Are you sure you want to delete this usage record?')) {
-      deleteUsageRecord(recordId);
+    setDeleteConfirm({ isOpen: true, recordId });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.recordId) {
+      deleteUsageRecord(deleteConfirm.recordId);
       loadHistory();
+    }
+  };
+
+  const confirmImport = () => {
+    if (importConfirm.data) {
+      saveData(importConfirm.data);
+      loadHistory();
+      loadSites();
+      setAlertModal({
+        isOpen: true,
+        title: 'Success',
+        message: 'Data imported successfully!',
+      });
     }
   };
 
@@ -163,17 +201,20 @@ const UsageHistory: React.FC = () => {
         try {
           const jsonData = JSON.parse(e.target?.result as string);
           if (!isValidAppData(jsonData)) {
-            alert('Invalid backup file. The file does not match the expected data format.');
+            setAlertModal({
+              isOpen: true,
+              title: 'Invalid File',
+              message: 'Invalid backup file. The file does not match the expected data format.',
+            });
             return;
           }
-          if (window.confirm('This will replace all current data. Are you sure you want to continue?')) {
-            saveData(jsonData);
-            loadHistory();
-            loadSites();
-            alert('Data imported successfully!');
-          }
+          setImportConfirm({ isOpen: true, data: jsonData });
         } catch (error) {
-          alert('Error importing data. Please check that the file is a valid JSON backup.');
+          setAlertModal({
+            isOpen: true,
+            title: 'Import Error',
+            message: 'Error importing data. Please check that the file is a valid JSON backup.',
+          });
         }
       };
       reader.readAsText(file);
@@ -199,30 +240,40 @@ const UsageHistory: React.FC = () => {
       }}>
         <button
           onClick={handleExport}
+          onMouseEnter={() => setExportHover(true)}
+          onMouseLeave={() => setExportHover(false)}
           style={{
-            backgroundColor: '#28a745',
+            backgroundColor: colors.success,
             color: 'white',
             border: 'none',
             padding: '10px 20px',
             borderRadius: '6px',
             cursor: 'pointer',
             fontSize: '14px',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            boxShadow: exportHover ? '0 6px 10px rgba(0,0,0,0.15)' : shadows.base,
+            transform: exportHover ? 'translateY(-1px)' : 'none',
+            transition: transitions.base,
           }}
         >
           Export Data
         </button>
         <button
           onClick={handleImportClick}
+          onMouseEnter={() => setImportHover(true)}
+          onMouseLeave={() => setImportHover(false)}
           style={{
-            backgroundColor: '#007bff',
+            backgroundColor: colors.primary,
             color: 'white',
             border: 'none',
             padding: '10px 20px',
             borderRadius: '6px',
             cursor: 'pointer',
             fontSize: '14px',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            boxShadow: importHover ? '0 6px 10px rgba(0,0,0,0.15)' : shadows.base,
+            transform: importHover ? 'translateY(-1px)' : 'none',
+            transition: transitions.base,
           }}
         >
           Import Data
@@ -237,31 +288,50 @@ const UsageHistory: React.FC = () => {
       </div>
       
       {history.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '40px', 
-          backgroundColor: '#f8f9fa', 
-          borderRadius: '8px',
-          border: '1px solid #dee2e6'
+        <div style={{
+          textAlign: 'center',
+          padding: '40px 24px',
+          background: `linear-gradient(135deg, ${colors.gray50} 0%, ${colors.infoLight} 100%)`,
+          borderRadius: '12px',
+          border: 'none',
+          boxShadow: shadows.base,
+          animation: 'fadeIn 0.5s ease-in-out',
         }}>
-          <p style={{ color: '#666', fontSize: '18px', margin: 0 }}>
-            No usage history yet.
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>📊</div>
+          <p style={{ color: colors.gray900, fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
+            No usage history yet
           </p>
-          <p style={{ color: '#666', margin: '10px 0 0 0' }}>
+          <p style={{ color: colors.gray600, margin: 0, lineHeight: '1.5' }}>
             Start tracking your infusion sites to see your history here.
           </p>
+          <style>
+            {`
+              @keyframes fadeIn {
+                from {
+                  opacity: 0;
+                  transform: translateY(10px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}
+          </style>
         </div>
       ) : (
         <div>
-          <div style={{ 
-            backgroundColor: '#e7f3ff', 
-            border: '1px solid #b3d9ff', 
-            borderRadius: '8px', 
-            padding: '15px', 
-            marginBottom: '20px' 
+          <div style={{
+            backgroundColor: colors.infoLight,
+            border: 'none',
+            borderLeft: `4px solid ${colors.info}`,
+            borderRadius: '8px',
+            padding: '12px 12px 12px 16px',
+            marginBottom: '20px',
+            boxShadow: shadows.sm,
           }}>
-            <p style={{ margin: 0, color: '#0066cc' }}>
-              <strong>Total uses:</strong> {history.length}
+            <p style={{ margin: 0, color: colors.infoHover, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📈</span> <strong>Total uses:</strong> {history.length}
             </p>
           </div>
 
@@ -327,13 +397,15 @@ const UsageHistory: React.FC = () => {
                             <button
                               onClick={cancelEdit}
                               style={{
-                                backgroundColor: '#6c757d',
+                                backgroundColor: colors.gray600,
                                 color: 'white',
                                 border: 'none',
                                 padding: '6px 12px',
                                 borderRadius: '4px',
                                 cursor: 'pointer',
-                                fontSize: '12px'
+                                fontSize: '12px',
+                                boxShadow: shadows.sm,
+                                transition: transitions.base,
                               }}
                             >
                               Cancel
@@ -341,13 +413,15 @@ const UsageHistory: React.FC = () => {
                             <button
                               onClick={saveEdit}
                               style={{
-                                backgroundColor: '#28a745',
+                                backgroundColor: colors.success,
                                 color: 'white',
                                 border: 'none',
                                 padding: '6px 12px',
                                 borderRadius: '4px',
                                 cursor: 'pointer',
-                                fontSize: '12px'
+                                fontSize: '12px',
+                                boxShadow: shadows.sm,
+                                transition: transitions.base,
                               }}
                             >
                               Save
@@ -372,13 +446,17 @@ const UsageHistory: React.FC = () => {
                               <button
                                 onClick={() => startEditRecord(record)}
                                 style={{
-                                  backgroundColor: '#007bff',
+                                  backgroundColor: colors.primary,
                                   color: 'white',
                                   border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '3px',
+                                  padding: '10px 14px',
+                                  borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '11px'
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  minHeight: '44px',
+                                  boxShadow: shadows.sm,
+                                  transition: transitions.base,
                                 }}
                               >
                                 Edit
@@ -386,13 +464,17 @@ const UsageHistory: React.FC = () => {
                               <button
                                 onClick={() => handleDeleteRecord(record.id)}
                                 style={{
-                                  backgroundColor: '#dc3545',
+                                  backgroundColor: colors.danger,
                                   color: 'white',
                                   border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '3px',
+                                  padding: '10px 14px',
+                                  borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '11px'
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  minHeight: '44px',
+                                  boxShadow: shadows.sm,
+                                  transition: transitions.base,
                                 }}
                               >
                                 Delete
@@ -409,6 +491,34 @@ const UsageHistory: React.FC = () => {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, recordId: null })}
+        title="Delete Record"
+        message="Are you sure you want to delete this usage record?"
+        type="confirm"
+        confirmText="Delete"
+        onConfirm={confirmDelete}
+      />
+
+      <Modal
+        isOpen={importConfirm.isOpen}
+        onClose={() => setImportConfirm({ isOpen: false, data: null })}
+        title="Import Data"
+        message="This will replace all current data. Are you sure you want to continue?"
+        type="confirm"
+        confirmText="Import"
+        onConfirm={confirmImport}
+      />
+
+      <Modal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: '', message: '' })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type="alert"
+      />
     </div>
   );
 };

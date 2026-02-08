@@ -292,7 +292,6 @@ describe('LocationManager - adding sites', () => {
 
 describe('LocationManager - deleting sites', () => {
   it('deletes a site when user confirms', () => {
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
     seedData({
       sites: [{ id: 's1', name: 'Arm', side: 'left' }],
       usageHistory: [],
@@ -301,12 +300,18 @@ describe('LocationManager - deleting sites', () => {
 
     fireEvent.click(screen.getByText('Delete'));
 
-    expect(window.confirm).toHaveBeenCalled();
+    // Should show confirm modal
+    expect(screen.getByText('Delete Site')).toBeInTheDocument();
+    expect(screen.getByText(/This will also remove all usage history/)).toBeInTheDocument();
+
+    // Confirm deletion - find all Delete buttons and click the one in the modal (the second one)
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[1]);
+
     expect(loadData().sites).toHaveLength(0);
   });
 
   it('does not delete when user cancels', () => {
-    jest.spyOn(window, 'confirm').mockReturnValue(false);
     seedData({
       sites: [{ id: 's1', name: 'Arm', side: 'left' }],
       usageHistory: [],
@@ -314,6 +319,12 @@ describe('LocationManager - deleting sites', () => {
     render(<LocationManager />);
 
     fireEvent.click(screen.getByText('Delete'));
+
+    // Should show confirm modal
+    expect(screen.getByText('Delete Site')).toBeInTheDocument();
+
+    // Cancel deletion
+    fireEvent.click(screen.getByText('Cancel'));
 
     expect(loadData().sites).toHaveLength(1);
   });
@@ -323,7 +334,7 @@ describe('LocationManager - empty state', () => {
   it('shows "No sites added yet" when empty', () => {
     seedData({ sites: [], usageHistory: [] });
     render(<LocationManager />);
-    expect(screen.getByText('No sites added yet.')).toBeInTheDocument();
+    expect(screen.getByText('No sites added yet')).toBeInTheDocument();
   });
 });
 

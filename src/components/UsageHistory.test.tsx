@@ -34,7 +34,7 @@ describe('UsageHistory - empty state', () => {
   it('shows empty message when there is no usage history', () => {
     seedData({ sites: [], usageHistory: [] });
     render(<UsageHistory />);
-    expect(screen.getByText('No usage history yet.')).toBeInTheDocument();
+    expect(screen.getByText('No usage history yet')).toBeInTheDocument();
     expect(
       screen.getByText('Start tracking your infusion sites to see your history here.')
     ).toBeInTheDocument();
@@ -156,31 +156,39 @@ describe('UsageHistory - relative time formatting', () => {
 
 describe('UsageHistory - delete record', () => {
   it('deletes a record when user confirms', () => {
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
     const now = Date.now();
     seedData(makeSiteAndRecord('s1', 'Arm', 'left', 'r1', now));
     render(<UsageHistory />);
 
     fireEvent.click(screen.getByText('Delete'));
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      'Are you sure you want to delete this usage record?'
-    );
+    // Should show confirm modal
+    expect(screen.getByText('Delete Record')).toBeInTheDocument();
+    expect(screen.getByText('Are you sure you want to delete this usage record?')).toBeInTheDocument();
+
+    // Confirm deletion - find all Delete buttons and click the one in the modal (the second one)
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[1]);
+
     // After deletion, should show empty state
-    expect(screen.getByText('No usage history yet.')).toBeInTheDocument();
+    expect(screen.getByText('No usage history yet')).toBeInTheDocument();
     // Verify storage was updated
     expect(loadData().usageHistory).toHaveLength(0);
   });
 
   it('does not delete a record when user cancels', () => {
-    jest.spyOn(window, 'confirm').mockReturnValue(false);
     const now = Date.now();
     seedData(makeSiteAndRecord('s1', 'Arm', 'left', 'r1', now));
     render(<UsageHistory />);
 
     fireEvent.click(screen.getByText('Delete'));
 
-    expect(window.confirm).toHaveBeenCalled();
+    // Should show confirm modal
+    expect(screen.getByText('Delete Record')).toBeInTheDocument();
+
+    // Cancel deletion
+    fireEvent.click(screen.getByText('Cancel'));
+
     // Record should still be visible
     expect(screen.getByText('Arm (left)')).toBeInTheDocument();
     expect(loadData().usageHistory).toHaveLength(1);
@@ -340,8 +348,6 @@ describe('UsageHistory - import', () => {
 
   it('imports valid data and replaces current data', async () => {
     seedData({ sites: [], usageHistory: [] });
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     const importData: AppData = {
       sites: [{ id: 'imported-1', name: 'Imported Site', side: 'left' }],
@@ -355,9 +361,21 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
+    // Should show import confirm modal
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Data imported successfully!');
+      expect(screen.getByRole('heading', { name: 'Import Data' })).toBeInTheDocument();
+      expect(screen.getByText(/This will replace all current data/)).toBeInTheDocument();
     });
+
+    // Confirm import
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+
+    // Should show success modal
+    await waitFor(() => {
+      expect(screen.getByText('Success')).toBeInTheDocument();
+      expect(screen.getByText('Data imported successfully!')).toBeInTheDocument();
+    });
+
     const data = loadData();
     expect(data.sites).toHaveLength(1);
     expect(data.sites[0].name).toBe('Imported Site');
@@ -365,7 +383,6 @@ describe('UsageHistory - import', () => {
 
   it('shows error alert for invalid JSON', async () => {
     seedData({ sites: [], usageHistory: [] });
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<UsageHistory />);
 
@@ -375,15 +392,13 @@ describe('UsageHistory - import', () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
-        'Error importing data. Please check that the file is a valid JSON backup.'
-      );
+      expect(screen.getByText('Import Error')).toBeInTheDocument();
+      expect(screen.getByText('Error importing data. Please check that the file is a valid JSON backup.')).toBeInTheDocument();
     });
   });
 
   it('shows error alert for valid JSON with wrong schema', async () => {
     seedData({ sites: [], usageHistory: [] });
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<UsageHistory />);
 
@@ -394,17 +409,14 @@ describe('UsageHistory - import', () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
-        'Invalid backup file. The file does not match the expected data format.'
-      );
+      expect(screen.getByText('Invalid File')).toBeInTheDocument();
+      expect(screen.getByText('Invalid backup file. The file does not match the expected data format.')).toBeInTheDocument();
     });
   });
 
   it('does not import when user cancels confirmation', async () => {
     const now = Date.now();
     seedData(makeSiteAndRecord('s1', 'Arm', 'left', 'r1', now));
-    jest.spyOn(window, 'confirm').mockReturnValue(false);
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     const importData: AppData = {
       sites: [{ id: 'new-1', name: 'New Site', side: 'right' }],
@@ -418,9 +430,14 @@ describe('UsageHistory - import', () => {
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
+    // Should show import confirm modal
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalled();
+      expect(screen.getByRole('heading', { name: 'Import Data' })).toBeInTheDocument();
     });
+
+    // Cancel import
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
     // Original data should still be there
     const data = loadData();
     expect(data.sites[0].name).toBe('Arm');
@@ -428,7 +445,6 @@ describe('UsageHistory - import', () => {
 
   it('rejects data with invalid site structure', async () => {
     seedData({ sites: [], usageHistory: [] });
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<UsageHistory />);
 
@@ -443,15 +459,13 @@ describe('UsageHistory - import', () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
-        'Invalid backup file. The file does not match the expected data format.'
-      );
+      expect(screen.getByText('Invalid File')).toBeInTheDocument();
+      expect(screen.getByText('Invalid backup file. The file does not match the expected data format.')).toBeInTheDocument();
     });
   });
 
   it('rejects data with invalid usage record structure', async () => {
     seedData({ sites: [], usageHistory: [] });
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<UsageHistory />);
 
@@ -465,9 +479,8 @@ describe('UsageHistory - import', () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
-        'Invalid backup file. The file does not match the expected data format.'
-      );
+      expect(screen.getByText('Invalid File')).toBeInTheDocument();
+      expect(screen.getByText('Invalid backup file. The file does not match the expected data format.')).toBeInTheDocument();
     });
   });
 });
