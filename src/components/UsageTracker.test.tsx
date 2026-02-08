@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import UsageTracker from './UsageTracker';
 import { saveData } from '../utils/storage';
 import { AppData } from '../types';
@@ -128,14 +128,13 @@ describe('UsageTracker - empty state', () => {
   it('shows empty message when no sites are configured', () => {
     seedData({ sites: [], usageHistory: [] });
     render(<UsageTracker />);
-    expect(screen.getByText('No infusion sites configured yet.')).toBeInTheDocument();
+    expect(screen.getByText('No infusion sites configured yet')).toBeInTheDocument();
     expect(screen.getByText(/Go to "Manage Sites"/)).toBeInTheDocument();
   });
 });
 
 describe('UsageTracker - recording usage', () => {
-  it('records usage when form is submitted with a selected site', () => {
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
+  it('records usage when form is submitted with a selected site', async () => {
     seedData({
       sites: [{ id: 's1', name: 'Arm', side: 'left' }],
       usageHistory: [],
@@ -150,7 +149,11 @@ describe('UsageTracker - recording usage', () => {
     const submitButton = screen.getByText('Record Usage Now');
     fireEvent.click(submitButton);
 
-    expect(window.alert).toHaveBeenCalledWith('Usage recorded successfully!');
+    // Should show success modal after loading state completes
+    await waitFor(() => {
+      expect(screen.getByText('Success')).toBeInTheDocument();
+      expect(screen.getByText('Usage recorded successfully!')).toBeInTheDocument();
+    });
   });
 
   it('disables submit button when no site is selected', () => {

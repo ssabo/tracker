@@ -2,12 +2,23 @@ import React, { useState } from 'react';
 import LocationManager from './components/LocationManager';
 import UsageTracker from './components/UsageTracker';
 import UsageHistory from './components/UsageHistory';
+import { colors, transitions } from './utils/theme';
 import './App.css';
 
 type View = 'track' | 'manage' | 'history';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('track');
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const handleViewChange = (view: View) => {
+    if (view === currentView) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentView(view);
+      setIsTransitioning(false);
+    }, 150);
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -23,16 +34,19 @@ function App() {
   const navButtonStyle = (view: View) => ({
     padding: '15px 20px',
     border: 'none',
-    backgroundColor: currentView === view ? '#007bff' : '#f8f9fa',
-    color: currentView === view ? 'white' : '#333',
+    backgroundColor: currentView === view ? colors.primary : colors.gray50,
+    color: currentView === view ? 'white' : colors.gray700,
     cursor: 'pointer',
-    borderRadius: '8px',
+    borderRadius: '12px',
     margin: '5px',
     fontSize: '16px',
     fontWeight: 'bold',
     minHeight: '44px',
     flex: '1',
-    maxWidth: '120px'
+    maxWidth: '120px',
+    boxShadow: currentView === view ? '0 4px 6px rgba(79, 70, 229, 0.3)' : 'none',
+    transform: currentView === view ? 'translateY(-1px)' : 'none',
+    transition: transitions.base,
   });
 
   return (
@@ -50,19 +64,19 @@ function App() {
           <nav style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '5px' }}>
             <button
               style={navButtonStyle('track')}
-              onClick={() => setCurrentView('track')}
+              onClick={() => handleViewChange('track')}
             >
               Track Usage
             </button>
             <button
               style={navButtonStyle('manage')}
-              onClick={() => setCurrentView('manage')}
+              onClick={() => handleViewChange('manage')}
             >
               Manage Sites
             </button>
             <button
               style={navButtonStyle('history')}
-              onClick={() => setCurrentView('history')}
+              onClick={() => handleViewChange('history')}
             >
               View History
             </button>
@@ -70,8 +84,19 @@ function App() {
         </div>
       </header>
       
-      <main>
-        {renderView()}
+      <main style={{
+        paddingTop: 'max(10px, env(safe-area-inset-top))',
+        paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+        paddingLeft: 'max(10px, env(safe-area-inset-left))',
+        paddingRight: 'max(10px, env(safe-area-inset-right))',
+      }}>
+        <div style={{
+          opacity: isTransitioning ? 0 : 1,
+          transform: isTransitioning ? 'translateY(10px)' : 'translateY(0)',
+          transition: 'opacity 0.15s ease-in-out, transform 0.15s ease-in-out',
+        }}>
+          {renderView()}
+        </div>
       </main>
     </div>
   );

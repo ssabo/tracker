@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { InfusionSite } from '../types';
 import { loadData, addSite, deleteSite, groupSitesByName, suspendSite, unsuspendSite, isSiteSuspended } from '../utils/storage';
+import { colors, shadows, transitions } from '../utils/theme';
+import Modal from './Modal';
 
 const DURATION_PRESETS: { label: string; ms: number }[] = [
   { label: '3 days', ms: 3 * 24 * 60 * 60 * 1000 },
@@ -16,6 +18,11 @@ const LocationManager: React.FC = () => {
   const [suspendingId, setSuspendingId] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [customUnit, setCustomUnit] = useState<'days' | 'weeks' | 'months'>('days');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; siteId: string | null }>({
+    isOpen: false,
+    siteId: null,
+  });
+  const [addSiteHover, setAddSiteHover] = useState(false);
 
   const loadSites = useCallback(() => {
     const data = loadData();
@@ -37,8 +44,12 @@ const LocationManager: React.FC = () => {
   };
 
   const handleDeleteSite = (siteId: string) => {
-    if (window.confirm('Are you sure you want to delete this site? This will also remove all usage history for this site.')) {
-      deleteSite(siteId);
+    setDeleteConfirm({ isOpen: true, siteId });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.siteId) {
+      deleteSite(deleteConfirm.siteId);
       loadSites();
     }
   };
@@ -87,10 +98,10 @@ const LocationManager: React.FC = () => {
   const groupedSites = groupSitesByName(sites);
 
   return (
-    <div style={{ padding: '15px 10px', maxWidth: '600px', margin: '0 auto' }}>
-      <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 20px 0' }}>Manage Infusion Sites</h2>
+    <div style={{ padding: '12px 10px', maxWidth: '600px', margin: '0 auto' }}>
+      <h2 style={{ fontSize: 'clamp(20px, 4vw, 24px)', margin: '0 0 12px 0' }}>Manage Infusion Sites</h2>
 
-      <form onSubmit={handleAddSite} style={{ marginBottom: '30px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+      <form onSubmit={handleAddSite} style={{ marginBottom: '16px', padding: '12px', border: 'none', borderRadius: '8px', boxShadow: shadows.base }}>
         <h3>Add New Site</h3>
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px' }}>Site Name:</label>
@@ -117,8 +128,10 @@ const LocationManager: React.FC = () => {
         </div>
         <button
           type="submit"
+          onMouseEnter={() => setAddSiteHover(true)}
+          onMouseLeave={() => setAddSiteHover(false)}
           style={{
-            backgroundColor: '#007bff',
+            backgroundColor: colors.primary,
             color: 'white',
             padding: '14px 24px',
             border: 'none',
@@ -126,7 +139,10 @@ const LocationManager: React.FC = () => {
             cursor: 'pointer',
             fontSize: '16px',
             fontWeight: 'bold',
-            minHeight: '48px'
+            minHeight: '48px',
+            boxShadow: addSiteHover ? '0 6px 10px rgba(0,0,0,0.15)' : shadows.sm,
+            transform: addSiteHover ? 'translateY(-1px)' : 'none',
+            transition: transitions.base,
           }}
         >
           Add Site
@@ -136,13 +152,42 @@ const LocationManager: React.FC = () => {
       <div>
         <h3>Current Sites</h3>
         {Object.keys(groupedSites).length === 0 ? (
-          <p style={{ color: '#666', fontStyle: 'italic' }}>No sites added yet.</p>
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 24px',
+            background: `linear-gradient(135deg, ${colors.gray50} 0%, ${colors.successLight} 100%)`,
+            borderRadius: '12px',
+            boxShadow: shadows.base,
+            animation: 'fadeIn 0.5s ease-in-out',
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📝</div>
+            <p style={{ color: colors.gray900, fontSize: '18px', fontWeight: '600', margin: '0 0 8px 0' }}>
+              No sites added yet
+            </p>
+            <p style={{ color: colors.gray600, margin: 0, lineHeight: '1.5' }}>
+              Use the form above to add your first infusion site.
+            </p>
+            <style>
+              {`
+                @keyframes fadeIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+              `}
+            </style>
+          </div>
         ) : (
-          <div style={{ display: 'grid', gap: '15px' }}>
+          <div style={{ display: 'grid', gap: '10px' }}>
             {Object.entries(groupedSites).map(([siteName, sides]) => (
-              <div key={siteName} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px' }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>{siteName}</h4>
-                <div style={{ display: 'flex', gap: '10px' }}>
+              <div key={siteName} style={{ border: 'none', borderRadius: '8px', padding: '10px', boxShadow: shadows.sm }}>
+                <h4 style={{ margin: '0 0 6px 0', color: colors.gray900 }}>{siteName}</h4>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   {(['left', 'right'] as const).map(side => {
                     const site = sides[side];
                     const suspended = site ? isSiteSuspended(site) : false;
@@ -152,10 +197,11 @@ const LocationManager: React.FC = () => {
                         key={side}
                         style={{
                           flex: 1,
-                          padding: '10px',
-                          border: `1px solid ${suspended ? '#bee5eb' : '#eee'}`,
+                          padding: '8px',
+                          border: 'none',
                           borderRadius: '4px',
-                          backgroundColor: suspended ? '#d1ecf1' : site ? '#f8f9fa' : '#f5f5f5'
+                          backgroundColor: suspended ? colors.infoLight : site ? colors.gray50 : colors.gray100,
+                          boxShadow: shadows.sm,
                         }}
                       >
                         <div style={{ fontWeight: 'bold', marginBottom: '5px', textTransform: 'capitalize' }}>
@@ -164,7 +210,7 @@ const LocationManager: React.FC = () => {
                         {site ? (
                           <div>
                             {suspended && (
-                              <div style={{ fontSize: '12px', color: '#0c5460', marginBottom: '8px', fontStyle: 'italic' }}>
+                              <div style={{ fontSize: '12px', color: colors.infoHover, marginBottom: '8px', fontStyle: 'italic' }}>
                                 {formatSuspensionStatus(site)}
                               </div>
                             )}
@@ -174,14 +220,16 @@ const LocationManager: React.FC = () => {
                                 <button
                                   onClick={() => handleUnsuspend(site.id)}
                                   style={{
-                                    backgroundColor: '#28a745',
+                                    backgroundColor: colors.success,
                                     color: 'white',
                                     border: 'none',
                                     padding: '8px 12px',
                                     borderRadius: '4px',
                                     cursor: 'pointer',
                                     fontSize: '14px',
-                                    minHeight: '36px'
+                                    minHeight: '36px',
+                                    boxShadow: shadows.sm,
+                                    transition: transitions.base,
                                   }}
                                 >
                                   Resume
@@ -194,14 +242,16 @@ const LocationManager: React.FC = () => {
                                     setCustomUnit('days');
                                   }}
                                   style={{
-                                    backgroundColor: '#17a2b8',
+                                    backgroundColor: colors.info,
                                     color: 'white',
                                     border: 'none',
                                     padding: '8px 12px',
                                     borderRadius: '4px',
                                     cursor: 'pointer',
                                     fontSize: '14px',
-                                    minHeight: '36px'
+                                    minHeight: '36px',
+                                    boxShadow: shadows.sm,
+                                    transition: transitions.base,
                                   }}
                                 >
                                   Suspend
@@ -210,14 +260,16 @@ const LocationManager: React.FC = () => {
                               <button
                                 onClick={() => handleDeleteSite(site.id)}
                                 style={{
-                                  backgroundColor: '#dc3545',
+                                  backgroundColor: colors.danger,
                                   color: 'white',
                                   border: 'none',
                                   padding: '8px 12px',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
                                   fontSize: '14px',
-                                  minHeight: '36px'
+                                  minHeight: '36px',
+                                  boxShadow: shadows.sm,
+                                  transition: transitions.base,
                                 }}
                               >
                                 Delete
@@ -226,28 +278,32 @@ const LocationManager: React.FC = () => {
 
                             {suspendingId === site.id && (
                               <div style={{
-                                marginTop: '10px',
-                                padding: '10px',
-                                backgroundColor: '#e8f4f8',
+                                marginTop: '8px',
+                                padding: '8px',
+                                backgroundColor: colors.infoLight,
                                 borderRadius: '6px',
-                                border: '1px solid #bee5eb'
+                                border: 'none',
+                                boxShadow: shadows.sm,
                               }}>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#0c5460' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: colors.infoHover }}>
                                   Suspend for:
                                 </div>
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: '8px', marginBottom: '8px' }}>
                                   {DURATION_PRESETS.map(preset => (
                                     <button
                                       key={preset.label}
                                       onClick={() => handleSuspendPreset(site.id, preset.ms)}
                                       style={{
                                         backgroundColor: '#fff',
-                                        color: '#0c5460',
-                                        border: '1px solid #bee5eb',
-                                        padding: '6px 10px',
+                                        color: colors.infoHover,
+                                        border: `1px solid ${colors.info}`,
+                                        padding: '8px 10px',
                                         borderRadius: '4px',
                                         cursor: 'pointer',
                                         fontSize: '13px',
+                                        minHeight: '40px',
+                                        boxShadow: shadows.sm,
+                                        transition: transitions.base,
                                       }}
                                     >
                                       {preset.label}
@@ -257,12 +313,16 @@ const LocationManager: React.FC = () => {
                                     onClick={() => handleSuspendIndefinite(site.id)}
                                     style={{
                                       backgroundColor: '#fff',
-                                      color: '#0c5460',
-                                      border: '1px solid #bee5eb',
-                                      padding: '6px 10px',
+                                      color: colors.infoHover,
+                                      border: `1px solid ${colors.info}`,
+                                      padding: '8px 10px',
                                       borderRadius: '4px',
                                       cursor: 'pointer',
                                       fontSize: '13px',
+                                      minHeight: '40px',
+                                      boxShadow: shadows.sm,
+                                      gridColumn: '1 / -1',
+                                      transition: transitions.base,
                                     }}
                                   >
                                     Until I resume
@@ -301,13 +361,15 @@ const LocationManager: React.FC = () => {
                                     onClick={() => handleSuspendCustom(site.id)}
                                     disabled={!customAmount || parseInt(customAmount, 10) <= 0}
                                     style={{
-                                      backgroundColor: customAmount && parseInt(customAmount, 10) > 0 ? '#17a2b8' : '#6c757d',
+                                      backgroundColor: customAmount && parseInt(customAmount, 10) > 0 ? colors.info : colors.gray600,
                                       color: 'white',
                                       border: 'none',
                                       padding: '6px 10px',
                                       borderRadius: '4px',
                                       cursor: customAmount && parseInt(customAmount, 10) > 0 ? 'pointer' : 'not-allowed',
                                       fontSize: '13px',
+                                      boxShadow: shadows.sm,
+                                      transition: transitions.base,
                                     }}
                                   >
                                     Apply
@@ -317,7 +379,7 @@ const LocationManager: React.FC = () => {
                             )}
                           </div>
                         ) : (
-                          <span style={{ color: '#999', fontSize: '12px' }}>Not configured</span>
+                          <span style={{ color: colors.gray600, fontSize: '12px' }}>Not configured</span>
                         )}
                       </div>
                     );
@@ -328,6 +390,16 @@ const LocationManager: React.FC = () => {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, siteId: null })}
+        title="Delete Site"
+        message="Are you sure you want to delete this site? This will also remove all usage history for this site."
+        type="confirm"
+        confirmText="Delete"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };
