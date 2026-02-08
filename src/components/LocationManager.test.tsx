@@ -225,3 +225,167 @@ describe('LocationManager - suspension UI', () => {
     expect(screen.getByText('Resume')).toBeInTheDocument();
   });
 });
+
+describe('LocationManager - adding sites', () => {
+  it('adds a new site with both sides', () => {
+    seedData({ sites: [], usageHistory: [] });
+    render(<LocationManager />);
+
+    const nameInput = screen.getByPlaceholderText('e.g., Abdomen, Arm, Thigh');
+    fireEvent.change(nameInput, { target: { value: 'Thigh' } });
+
+    const form = nameInput.closest('form')!;
+    fireEvent.submit(form);
+
+    const data = loadData();
+    expect(data.sites).toHaveLength(2);
+    expect(data.sites[0].name).toBe('Thigh');
+    expect(data.sites[1].name).toBe('Thigh');
+    const sides = data.sites.map(s => s.side).sort();
+    expect(sides).toEqual(['left', 'right']);
+  });
+
+  it('adds a single left side', () => {
+    seedData({ sites: [], usageHistory: [] });
+    render(<LocationManager />);
+
+    const nameInput = screen.getByPlaceholderText('e.g., Abdomen, Arm, Thigh');
+    fireEvent.change(nameInput, { target: { value: 'Arm' } });
+
+    const sideSelect = screen.getByDisplayValue('Both');
+    fireEvent.change(sideSelect, { target: { value: 'left' } });
+
+    const form = nameInput.closest('form')!;
+    fireEvent.submit(form);
+
+    const data = loadData();
+    expect(data.sites).toHaveLength(1);
+    expect(data.sites[0].side).toBe('left');
+  });
+
+  it('clears form after adding', () => {
+    seedData({ sites: [], usageHistory: [] });
+    render(<LocationManager />);
+
+    const nameInput = screen.getByPlaceholderText('e.g., Abdomen, Arm, Thigh') as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: 'Arm' } });
+
+    const form = nameInput.closest('form')!;
+    fireEvent.submit(form);
+
+    expect(nameInput.value).toBe('');
+  });
+
+  it('does not add site with empty name', () => {
+    seedData({ sites: [], usageHistory: [] });
+    render(<LocationManager />);
+
+    const nameInput = screen.getByPlaceholderText('e.g., Abdomen, Arm, Thigh');
+    fireEvent.change(nameInput, { target: { value: '   ' } });
+
+    const form = nameInput.closest('form')!;
+    fireEvent.submit(form);
+
+    expect(loadData().sites).toHaveLength(0);
+  });
+});
+
+describe('LocationManager - deleting sites', () => {
+  it('deletes a site when user confirms', () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    seedData({
+      sites: [{ id: 's1', name: 'Arm', side: 'left' }],
+      usageHistory: [],
+    });
+    render(<LocationManager />);
+
+    fireEvent.click(screen.getByText('Delete'));
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(loadData().sites).toHaveLength(0);
+  });
+
+  it('does not delete when user cancels', () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(false);
+    seedData({
+      sites: [{ id: 's1', name: 'Arm', side: 'left' }],
+      usageHistory: [],
+    });
+    render(<LocationManager />);
+
+    fireEvent.click(screen.getByText('Delete'));
+
+    expect(loadData().sites).toHaveLength(1);
+  });
+});
+
+describe('LocationManager - empty state', () => {
+  it('shows "No sites added yet" when empty', () => {
+    seedData({ sites: [], usageHistory: [] });
+    render(<LocationManager />);
+    expect(screen.getByText('No sites added yet.')).toBeInTheDocument();
+  });
+});
+
+describe('LocationManager - not configured side', () => {
+  it('shows "Not configured" for missing side', () => {
+    seedData({
+      sites: [{ id: 's1', name: 'Arm', side: 'left' }],
+      usageHistory: [],
+    });
+    render(<LocationManager />);
+    expect(screen.getByText('Not configured')).toBeInTheDocument();
+  });
+});
+
+describe('LocationManager - custom duration units', () => {
+  it('suspends with weeks unit', () => {
+    seedData({
+      sites: [{ id: 's1', name: 'Arm', side: 'left' }],
+      usageHistory: [],
+    });
+    render(<LocationManager />);
+
+    fireEvent.click(screen.getByText('Suspend'));
+
+    const numberInput = screen.getByPlaceholderText('#');
+    fireEvent.change(numberInput, { target: { value: '2' } });
+
+    const unitSelect = screen.getByDisplayValue('days');
+    fireEvent.change(unitSelect, { target: { value: 'weeks' } });
+
+    fireEvent.click(screen.getByText('Apply'));
+
+    const data = loadData();
+    expect(data.sites[0].suspension).toBeDefined();
+    // 2 weeks = 14 days in ms
+    const expectedMs = 2 * 7 * 24 * 60 * 60 * 1000;
+    const actualDuration = data.sites[0].suspension!.resumeAt! - data.sites[0].suspension!.suspendedAt;
+    expect(Math.abs(actualDuration - expectedMs)).toBeLessThan(1000);
+  });
+
+  it('suspends with months unit', () => {
+    seedData({
+      sites: [{ id: 's1', name: 'Arm', side: 'left' }],
+      usageHistory: [],
+    });
+    render(<LocationManager />);
+
+    fireEvent.click(screen.getByText('Suspend'));
+
+    const numberInput = screen.getByPlaceholderText('#');
+    fireEvent.change(numberInput, { target: { value: '1' } });
+
+    const unitSelect = screen.getByDisplayValue('days');
+    fireEvent.change(unitSelect, { target: { value: 'months' } });
+
+    fireEvent.click(screen.getByText('Apply'));
+
+    const data = loadData();
+    expect(data.sites[0].suspension).toBeDefined();
+    // 1 month = 30 days in ms
+    const expectedMs = 30 * 24 * 60 * 60 * 1000;
+    const actualDuration = data.sites[0].suspension!.resumeAt! - data.sites[0].suspension!.suspendedAt;
+    expect(Math.abs(actualDuration - expectedMs)).toBeLessThan(1000);
+  });
+});
