@@ -1,57 +1,62 @@
 # Infusion Site Tracker
 
-A React TypeScript application for diabetes management that helps users track injection site rotation and usage history. This tool assists people with diabetes who need to rotate their insulin injection sites to prevent lipodystrophy and maintain optimal absorption.
+A React TypeScript application for diabetes management that helps users track injection site rotation and usage history. This tool assists people with diabetes who need to rotate their insulin infusion sites to prevent lipodystrophy and maintain optimal absorption.
 
 ## Features
 
-- **Site Management**: Add and organize injection sites by body location (left/right)
-- **Usage Tracking**: Record when each site is used with timestamp tracking
-- **History View**: View complete usage history with edit and delete capabilities
-- **Local Storage**: All data persists locally in your browser
+- **Site Management**: Add and organize injection sites by body location with left/right side tracking
+- **Usage Tracking**: Record when each site is used with one-tap logging
+- **Smart Priority Ranking**: Color-coded recommendations — green for sites due for use, red for recently used sites — to encourage healthy rotation
+- **Site Suspension**: Temporarily suspend sites that need recovery time, with preset durations (3 days to 2 months), indefinite suspension, or custom durations
+- **Usage History**: View complete history grouped by date with relative timestamps, plus inline editing and deletion
+- **Data Export/Import**: Back up all data as JSON and restore from backups
+- **Local Storage**: All data persists locally in your browser — no account or server required
+- **Mobile-Friendly**: Responsive design with touch-friendly controls
+
+## Tech Stack
+
+- **React 19** with TypeScript (strict mode)
+- **Create React App** toolchain
+- **localStorage** for persistence (no backend)
+- **React Testing Library** + **Jest** for tests
+- **gh-pages** for deployment
 
 ## Getting Started
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+```bash
+npm install
+npm start
+```
+
+The app opens at [http://localhost:3000](http://localhost:3000).
 
 ## Available Scripts
 
-In the project directory, you can run:
+| Command | Description |
+|---------|-------------|
+| `npm start` | Run development server |
+| `npm test` | Run tests in watch mode |
+| `npm run build` | Build for production |
+| `npm run deploy` | Deploy to GitHub Pages |
 
-### `npm start`
+## Project Structure
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```
+src/
+├── components/
+│   ├── UsageTracker.tsx        # Main tracking UI with priority ranking
+│   ├── UsageTracker.test.tsx
+│   ├── LocationManager.tsx     # Site CRUD and suspension management
+│   ├── LocationManager.test.tsx
+│   └── UsageHistory.tsx        # History timeline with export/import
+├── utils/
+│   ├── storage.ts              # localStorage API for all data operations
+│   └── storage.test.ts
+├── types.ts                    # TypeScript interfaces
+├── App.tsx                     # Navigation shell
+└── App.test.tsx
+```
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## License
 
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+GPL-3.0
